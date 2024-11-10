@@ -59,7 +59,25 @@ class MLP(nn.Module):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        pass
+        super().__init__()
+        layers = []
+
+        for i in range(len(n_hidden)):
+            if i == 0:
+                layers.append(nn.Linear(n_inputs, n_hidden[i]))
+            else:
+                layers.append(nn.Linear(n_hidden[i-1], n_hidden[i]))
+            if use_batch_norm:
+                layers.append(nn.BatchNorm1d(n_hidden[i]))
+            layers.append(nn.ELU())
+
+        if len(layers) == 0:
+            layers.append(nn.Linear(n_inputs, n_classes))
+
+        else:
+            layers.append(nn.Linear(n_hidden[-1], n_classes))
+
+        self.network = nn.Sequential(*layers)
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -81,6 +99,8 @@ class MLP(nn.Module):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
+
+        out = self.network(x)
 
         #######################
         # END OF YOUR CODE    #

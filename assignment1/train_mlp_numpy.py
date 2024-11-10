@@ -30,6 +30,9 @@ from mlp_numpy import MLP
 from modules import CrossEntropyModule
 import cifar10_utils
 
+import matplotlib.pyplot as plt
+import pickle
+
 import torch
 
 
@@ -54,11 +57,14 @@ def accuracy(predictions, targets):
     # PUT YOUR CODE HERE  #
     #######################
 
+    prediction_labels = np.argmax(predictions, axis=1)
+    acc = (prediction_labels == targets).sum() / targets.shape[0]
+
     #######################
     # END OF YOUR CODE    #
     #######################
 
-    return accuracy
+    return acc
 
 
 def evaluate_model(model, data_loader):
@@ -81,6 +87,15 @@ def evaluate_model(model, data_loader):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
+    accuracies_scaled = []
+    total_batch_size = 0
+    for batch, targets in data_loader:
+        batch_size = targets.shape[0]
+        total_batch_size += batch_size
+        batch = batch.reshape(batch_size, -1)
+        accuracies_scaled.append(batch_size * accuracy(model.forward(batch), targets))
+    avg_accuracy = sum(accuracies_scaled) / total_batch_size
 
     #######################
     # END OF YOUR CODE    #
@@ -135,14 +150,58 @@ def train(hidden_dims, lr, batch_size, epochs, seed, data_dir):
     #######################
 
     # TODO: Initialize model and loss module
-    model = ...
-    loss_module = ...
+    model = MLP(n_inputs=3072, n_hidden=hidden_dims, n_classes=10)
+    loss_module = CrossEntropyModule()
     # TODO: Training loop including validation
-    val_accuracies = ...
+
+    best_acc = 0
+    best_model = None
+    val_accuracies = []
+
+    train_losses = []
+
+    for epoch in range(epochs):
+        
+        epoch_loss = []
+        for batch, targets in cifar10_loader["train"]:
+            batch = batch.reshape(batch_size, -1)
+            preds = model.forward(batch)
+            train_loss = loss_module.forward(preds, targets)
+            epoch_loss.append(train_loss)
+            model.backward(loss_module.backward(preds, targets))
+
+            # if loss < best_loss:
+            #     best_loss = loss
+            #     best_model = deepcopy(model)
+
+            #Step
+            for layer in model.layers:
+                if hasattr(layer, 'params'):
+                    layer.params['weight'] -= lr * layer.grads['weight']
+                    layer.params['bias'] -= lr * layer.grads['bias']
+            
+        val_acc = evaluate_model(model, cifar10_loader['validation'])
+        val_accuracies.append(val_acc)
+
+        train_losses.append(epoch_loss)
+
+        print(f"Epoch: {epoch}", "#"*70)
+        print(f"Val acc: {val_acc}")
+        print( "#"*70)
+
+        if val_acc > best_acc:
+            best_acc = val_acc
+            best_model = deepcopy(model)
+
+        
+
     # TODO: Test best model
-    test_accuracy = ...
+    test_accuracy = evaluate_model(best_model, cifar10_loader['test'])
+    print(f"Learning finished: {epoch}", "#"*70)
+    print(f"Test acc: {test_accuracy}")
+    print( "#"*70)
     # TODO: Add any information you might want to save for plotting
-    logging_dict = ...
+    logging_dict = {"train_loss": train_losses}
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -174,6 +233,29 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     kwargs = vars(args)
+    
+    if os.path.isfile('assignment1/train_loss.pkl'):
+      with open('assignment1/train_loss.pkl', 'rb') as f:
+          train_loss = pickle.load(f)
+    else: 
+      _, _, _, logging_dict = train(**kwargs)
+      train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
+      with open('assignment1/train_loss.pkl', 'wb') as f:
+        pickle.dump(train_loss, f)
 
-    train(**kwargs)
+    plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
+
+
+    moving_average = np.convolve(train_loss, np.ones(31) / 31, mode='valid')
+
+    plt.plot(np.arange(15, train_loss.size - 15) / 351, moving_average, linewidth=0.5, label="moving average 31")
+
+    moving_average = np.convolve(train_loss, np.ones(351) / 351, mode='valid')
+
+    plt.plot(np.arange(175, train_loss.size - 175) / 351, moving_average, linewidth=1.5, label="moving average 351")
+
+    plt.legend()
+    plt.ylabel('train loss')
+    plt.xlabel('epochs')
+    plt.savefig('train_loss.png', dpi=1000)
     # Feel free to add any additional functions, such as plotting of the loss curve here
