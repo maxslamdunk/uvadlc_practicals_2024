@@ -234,46 +234,46 @@ if __name__ == '__main__':
     args = parser.parse_args()
     kwargs = vars(args)
     
-    # train(**kwargs)
+    train(**kwargs)
 
     # Code below produces graphs for batch_norm = True and False separatly 
     # if you want to reproduce them - just comment the train(**kwargs) above and uncode everyhting below 
     # and run this file 
 
-    if os.path.isfile('assignment1/train_loss.pkl'):
-      with open('assignment1/train_loss.pkl', 'rb') as f:
-          val_acc, train_loss = pickle.load(f)
-    else: 
-      _, val_acc, _, logging_dict = train(**kwargs)
-      train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
-      with open('assignment1/train_loss.pkl', 'wb') as f:
-        pickle.dump((val_acc, train_loss), f)
+    # if os.path.isfile('assignment1/train_loss.pkl'):
+    #   with open('assignment1/train_loss.pkl', 'rb') as f:
+    #       val_acc, train_loss = pickle.load(f)
+    # else: 
+    #   _, val_acc, _, logging_dict = train(**kwargs)
+    #   train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
+    #   with open('assignment1/train_loss.pkl', 'wb') as f:
+    #     pickle.dump((val_acc, train_loss), f)
 
-    plt.figure()
+    # plt.figure()
 
-    plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
+    # plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
 
 
-    moving_average = np.convolve(train_loss, np.ones(31) / 31, mode='valid')
+    # moving_average = np.convolve(train_loss, np.ones(31) / 31, mode='valid')
 
-    plt.plot(np.arange(15, train_loss.size - 15) / 351, moving_average, linewidth=0.5, label="moving average 31")
+    # plt.plot(np.arange(15, train_loss.size - 15) / 351, moving_average, linewidth=0.5, label="moving average 31")
 
-    moving_average = np.convolve(train_loss, np.ones(351) / 351, mode='valid')
+    # moving_average = np.convolve(train_loss, np.ones(351) / 351, mode='valid')
 
-    plt.plot(np.arange(175, train_loss.size - 175) / 351, moving_average, linewidth=1.5, label="moving average 351")
+    # plt.plot(np.arange(175, train_loss.size - 175) / 351, moving_average, linewidth=1.5, label="moving average 351")
 
-    plt.legend()
-    plt.ylabel('train loss')
-    plt.xlabel('epochs')
-    plt.title('train loss')
-    plt.savefig('assignment1/train_loss.png', dpi=1000)
+    # plt.legend()
+    # plt.ylabel('train loss')
+    # plt.xlabel('epochs')
+    # plt.title('train loss')
+    # plt.savefig('assignment1/train_loss.png', dpi=1000)
 
-    plt.figure()
+    # plt.figure()
 
-    plt.plot(val_acc, label='validation accuracy')
-    plt.legend()
-    plt.ylabel('accuracy')
-    plt.xlabel('epochs')
-    plt.title('validation accuracy')
-    plt.savefig('assignment1/val_acc.png', dpi=1000)
+    # plt.plot(val_acc, label='validation accuracy')
+    # plt.legend()
+    # plt.ylabel('accuracy')
+    # plt.xlabel('epochs')
+    # plt.title('validation accuracy')
+    # plt.savefig('assignment1/val_acc.png', dpi=1000)
     # Feel free to add any additional functions, such as plotting of the loss curve here
