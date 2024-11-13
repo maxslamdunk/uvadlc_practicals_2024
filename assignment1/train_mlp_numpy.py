@@ -236,12 +236,14 @@ if __name__ == '__main__':
     
     if os.path.isfile('assignment1/train_loss.pkl'):
       with open('assignment1/train_loss.pkl', 'rb') as f:
-          train_loss = pickle.load(f)
+          val_acc, train_loss = pickle.load(f)
     else: 
-      _, _, _, logging_dict = train(**kwargs)
+      _, val_acc, _, logging_dict = train(**kwargs)
       train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
       with open('assignment1/train_loss.pkl', 'wb') as f:
-        pickle.dump(train_loss, f)
+        pickle.dump((val_acc, train_loss), f)
+
+    plt.figure()
 
     plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
 
@@ -257,5 +259,15 @@ if __name__ == '__main__':
     plt.legend()
     plt.ylabel('train loss')
     plt.xlabel('epochs')
-    plt.savefig('train_loss.png', dpi=1000)
+    plt.title('train loss')
+    plt.savefig('assignment1/train_loss.png', dpi=1000)
+
+    plt.figure()
+
+    plt.plot(val_acc, label='validation accuracy')
+    plt.legend()
+    plt.ylabel('accuracy')
+    plt.xlabel('epochs')
+    plt.title('validation accuracy')
+    plt.savefig('assignment1/val_acc.png', dpi=1000)
     # Feel free to add any additional functions, such as plotting of the loss curve here

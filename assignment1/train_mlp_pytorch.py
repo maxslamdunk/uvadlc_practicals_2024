@@ -249,28 +249,44 @@ if __name__ == '__main__':
     args = parser.parse_args()
     kwargs = vars(args)
 
-    if os.path.isfile('assignment1/train_loss_pytorch.pkl'):
-      with open('assignment1/train_loss_pytorch.pkl', 'rb') as f:
-          train_loss = pickle.load(f)
-    else: 
-      _, _, _, logging_dict = train(**kwargs)
-      train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
-      with open('assignment1/train_loss_pytorch.pkl', 'wb') as f:
-        pickle.dump(train_loss, f)
-        
-    plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
+    for batch_norm in [False, True]:
+        if os.path.isfile(f'assignment1/train_loss_pytorch_batch_norm_{batch_norm}.pkl'):
+          with open(f'assignment1/train_loss_pytorch_batch_norm_{batch_norm}.pkl', 'rb') as f:
+              val_acc, train_loss = pickle.load(f)
+        else: 
+          if not batch_norm:
+            _, val_acc, _, logging_dict = train(**kwargs)
+          else:
+             _, val_acc, _, logging_dict = train(hidden_dims=[128], lr=0.1, use_batch_norm=True, batch_size=128, epochs=10, seed=42, data_dir='data/') 
+          train_loss = np.array(logging_dict["train_loss"]).reshape(-1)
+          with open(f'assignment1/train_loss_pytorch_batch_norm_{batch_norm}.pkl', 'wb') as f:
+            pickle.dump((val_acc, train_loss), f)
+
+        plt.figure()    
+
+        plt.plot(np.arange(0, train_loss.size) / 351, train_loss, linewidth=0.5, label='train loss')
 
 
-    moving_average = np.convolve(train_loss, np.ones(31) / 31, mode='valid')
+        moving_average = np.convolve(train_loss, np.ones(31) / 31, mode='valid')
 
-    plt.plot(np.arange(15, train_loss.size - 15) / 351, moving_average, linewidth=0.5, label="moving average 31")
+        plt.plot(np.arange(15, train_loss.size - 15) / 351, moving_average, linewidth=0.5, label="moving average 31")
 
-    moving_average = np.convolve(train_loss, np.ones(351) / 351, mode='valid')
+        moving_average = np.convolve(train_loss, np.ones(351) / 351, mode='valid')
 
-    plt.plot(np.arange(175, train_loss.size - 175) / 351, moving_average, linewidth=1.5, label="moving average 351")
+        plt.plot(np.arange(175, train_loss.size - 175) / 351, moving_average, linewidth=1.5, label="moving average 351")
 
-    plt.legend()
-    plt.ylabel('train loss')
-    plt.xlabel('epochs')
-    plt.savefig('train_loss_pytorch.png', dpi=1000)
-    # Feel free to add any additional functions, such as plotting of the loss curve here
+        plt.legend()
+        plt.ylabel('train loss')
+        plt.xlabel('epochs')
+        plt.title(f"train loss, batch_norm={batch_norm}")
+        plt.savefig(f'assignment1/train_loss_pytorch_batch_norm_{batch_norm}.png', dpi=1000)
+
+        plt.figure()
+
+        plt.plot(val_acc, label='validation accuracy')
+        plt.legend()
+        plt.ylabel('accuracy')
+        plt.xlabel('epochs')
+        plt.title(f"validation accuracy, batch_norm={batch_norm}")
+        plt.savefig(f'assignment1/val_acc_pytorch_batch_norm_{batch_norm}.png', dpi=1000)
+        # Feel free to add any additional functions, such as plotting of the loss curve here

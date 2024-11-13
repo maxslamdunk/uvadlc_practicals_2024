@@ -64,9 +64,15 @@ class MLP(nn.Module):
 
         for i in range(len(n_hidden)):
             if i == 0:
-                layers.append(nn.Linear(n_inputs, n_hidden[i]))
+                linear_layer = nn.Linear(n_inputs, n_hidden[i])
+                nn.init.kaiming_normal_(linear_layer.weight, nonlinearity='relu')
+                nn.init.zeros_(linear_layer.bias)
+                layers.append(linear_layer)
             else:
-                layers.append(nn.Linear(n_hidden[i-1], n_hidden[i]))
+                linear_layer = nn.Linear(n_hidden[i-1], n_hidden[i])
+                nn.init.kaiming_normal_(linear_layer.weight, nonlinearity='relu')
+                nn.init.zeros_(linear_layer.bias)
+                layers.append(linear_layer)
             if use_batch_norm:
                 layers.append(nn.BatchNorm1d(n_hidden[i]))
             layers.append(nn.ELU())
