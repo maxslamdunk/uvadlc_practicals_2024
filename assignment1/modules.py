@@ -51,7 +51,7 @@ class LinearModule(object):
         # PUT YOUR CODE HERE  #
         #######################
         numerator = 1 if input_layer else 2
-        self.params['weight'] = np.random.normal(loc=0.0, scale=numerator/in_features, size=(in_features, out_features))
+        self.params['weight'] = np.random.normal(loc=0.0, scale=np.sqrt(numerator/in_features), size=(in_features, out_features))
         self.params['bias'] = np.zeros(shape=out_features)
 
         self.grads['weight'] = np.zeros(shape=(in_features * out_features))
