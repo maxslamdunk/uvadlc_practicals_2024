@@ -116,7 +116,7 @@ class CausalSelfAttention(nn.Module):
 
         # Generate RoPE embeddings dynamically based on T
         seq_pos = torch.arange(T, device=device).unsqueeze(1) # Shape: (T)
-        freqs = seq_pos * self.inv_freq    # Shape: (T, dim // 2)
+        freqs = seq_pos * self.inv_freq.to(device)    # Shape: (T, dim // 2)
         #???# Shape: (1, 1, T, dim)
         
         # Split pos into sin and cos components, repeating each to match xq and xk dimensions
@@ -138,6 +138,7 @@ class CausalSelfAttention(nn.Module):
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
         # Split output of attention-head in query, key and value
+        device = x.device
         dim = C // self.n_head
         qkv  = self.c_attn(x)
         qkv = qkv.reshape(B, T, self.n_head, 3*dim)
@@ -158,12 +159,12 @@ class CausalSelfAttention(nn.Module):
 
 
         if self.use_flash_attn:
-            y = ...
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask=mask)
         else:
             # Compute attention scores
             att = att_weights / math.sqrt(dim)
             # Apply causal mask
-            causal_mask = mask.masked_fill(mask == 0, float('-inf'))
+            causal_mask = mask.masked_fill(mask == 0, float('-inf')).to(device)
             att_masked = att + causal_mask
             attention = F.softmax(att_masked, dim=-1)
             # Apply attention to the values
@@ -477,24 +478,38 @@ class GPT(nn.Module):
             idx_cond = idx if idx.size(1) <= self.block_size else idx[:, -self.block_size:]
 
             # forward the model to get the logits for the index in the sequence
+            logits = self.forward(idx_cond)
+            logits = logits[:, -1, :]
             # pluck the logits at the final step and scale by desired temperature
+            logits /= temperature
+
 
             if not do_sample:
                 # take the most likely token
-                idx_next = ...
+                idx_next = torch.argmax(probs, dim=-1, keepdim=True)
             
             else:
                 # apply softmax to convert logits to (normalized) probabilities
-
+                probs = torch.softmax(logits, dim=-1)
                 # optionally only consider top-k logits for sampling. 
                 if top_k is not None:
-                    pass
+                    top_k_values, _ = torch.topk(probs, top_k, dim=-1)
+                    kth_value = top_k_values[:, -1].unsqueeze(-1)
+                    probs = torch.where(probs < kth_value, 0.0, probs)   
 
                 # optionally apply top-p sampling
                 if top_p is not None:
-                    pass
+                    sorted_probs, sorted_indices = torch.sort(probs, descending=True, dim=-1)
+                    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+                    sorted_indices_to_remove = cumulative_probs > top_p
+                    # Shift the mask one position to the right to keep the first token above the threshold
+                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                    sorted_indices_to_remove[..., 0] = 0
+                    indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+                    probs = torch.where(indices_to_remove, 0.0, probs)
+                idx_next = torch.multinomial(probs, num_samples=1)
             
             # append sampled index to the running sequence and continue
-            idx = ...
+            idx = torch.cat((idx, idx_next), dim=1)
 
         return idx

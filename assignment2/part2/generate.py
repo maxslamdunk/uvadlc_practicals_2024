@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     # Load model weights    
     model_weights_path = os.path.join(args.model_weights_folder, sorted(os.listdir(args.model_weights_folder))[-1])
-    state_dict = torch.load(model_weights_path)
+    state_dict = torch.load(model_weights_path, map_location=torch.device('cpu'))
 
     # Clean up state dict keys by removing '_orig_mod' prefix if present due to torch.compile()
     if state_dict['hyper_parameters']['compile'] and 'state_dict' in state_dict:
