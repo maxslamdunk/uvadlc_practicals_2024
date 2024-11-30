@@ -461,4 +461,40 @@ class GPT(nn.Module):
                                         predicted tokens, otherwise takes the most likely token. 
                                         Default is False.
             top_k (int, optional): If set, only the top-k most likely next tokens are considered for 
-                                    sampling at each step. If
+                                    sampling at each step. If None, all tokens are considered. 
+                                    Default is None.
+            top_p (float, optional): If set, only the most likely tokens whose cumulative probability 
+                                    mass is less than p are considered for sampling at each step. 
+                                    If None, all tokens are considered. Default is 0.6.
+
+        Returns:
+            torch.LongTensor: The tensor of token indices including the original and the newly generated 
+                                tokens, with shape (batch size, sequence length + max_new_tokens).
+        """
+        assert not (top_k and top_p), "You can only use one of top_k or top_p sampling"
+        for _ in range(max_new_tokens):
+            # if the sequence context is growing too long we must crop it at block_size
+            idx_cond = idx if idx.size(1) <= self.block_size else idx[:, -self.block_size:]
+
+            # forward the model to get the logits for the index in the sequence
+            # pluck the logits at the final step and scale by desired temperature
+
+            if not do_sample:
+                # take the most likely token
+                idx_next = ...
+            
+            else:
+                # apply softmax to convert logits to (normalized) probabilities
+
+                # optionally only consider top-k logits for sampling. 
+                if top_k is not None:
+                    pass
+
+                # optionally apply top-p sampling
+                if top_p is not None:
+                    pass
+            
+            # append sampled index to the running sequence and continue
+            idx = ...
+
+        return idx
