@@ -33,4 +33,4 @@ def get_config():
     parser.add_argument("--compile", action="store_true", help="Compile the model for increased speed.")
     parser.add_argument("--pretrained_tokenizer", action="store_true", help="Use the pretrained tokenizer from OpenAI")
     args, _ = parser.parse_known_args()  # Parse known args and ignore the rest
-    return args
+  

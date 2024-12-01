@@ -159,7 +159,7 @@ class CausalSelfAttention(nn.Module):
 
 
         if self.use_flash_attn:
-            y = F.scaled_dot_product_attention(q, k, v, attn_mask=mask)
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask=mask.to(device), dropout_p=self.config.attn_pdrop)
         else:
             # Compute attention scores
             att = att_weights / math.sqrt(dim)
@@ -202,9 +202,9 @@ class TransformerDecoderBlock(nn.Module):
         super().__init__()
         # Initialize the layers
         super().__init__()
-        self.layer_norm_1 = RMSNorm(dim=config.n_embd, eps=1e-6)
+        self.layer_norm_1 = RMSNorm(dim=config.n_embd)
         self.self_attention = CausalSelfAttention(config)
-        self.layer_norm_2 = RMSNorm(dim=config.n_embd, eps=1e-6)
+        self.layer_norm_2 = RMSNorm(dim=config.n_embd)
         self.mlpf = nn.Sequential(
             nn.Linear(config.n_embd, 4 * config.n_embd),
             BERTGELU(),
@@ -213,7 +213,8 @@ class TransformerDecoderBlock(nn.Module):
         )
     def forward(self, x):
         # Forward pass through the Decoder Layer
-        out = x + self.self_attention(self.layer_norm_1(x)) + self.mlpf(self.layer_norm_2(x))
+        x = x + self.self_attention(self.layer_norm_1(x))
+        out = x + self.mlpf(self.layer_norm_2(x))
         return out
 
 
