@@ -35,8 +35,9 @@ def sample_reparameterize(mean, std):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
-    z = None
-    raise NotImplementedError
+
+    z = std * torch.randn_like(mean) + mean
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -58,8 +59,11 @@ def KLD(mean, log_std):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
     KLD = None
-    raise NotImplementedError
+    std = torch.exp(log_std)
+    KLD = 0.5 * torch.sum(std**2 + mean**2 - 1 - 2 * log_std, dim=-1)
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -78,8 +82,11 @@ def elbo_to_bpd(elbo, img_shape):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
     bpd = None
-    raise NotImplementedError
+    dims = torch.prod(torch.tensor(img_shape[1:])).item()
+    bpd = elbo * torch.log2(torch.exp(torch.tensor(1.0))) / dims
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -110,8 +117,29 @@ def visualize_manifold(decoder, grid_size=20):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
+
     img_grid = None
-    raise NotImplementedError
+
+    # Define the percentiles
+    percentiles = torch.linspace(0.5 / grid_size, (grid_size - 0.5) / grid_size, grid_size)
+    
+    # Use the icdf (inverse CDF) to map percentiles to the latent space
+    z_values = torch.distributions.Normal(0, 1).icdf(percentiles)
+    
+    # Create a 2D grid of latent values
+    z1, z2 = torch.meshgrid(z_values, z_values, indexing="ij")  # 2D grid
+    latent_grid = torch.stack([z1, z2], dim=-1).view(-1, 2)  # Flatten the grid
+    
+    # Decode each point in the latent grid
+    decoded_images = decoder(latent_grid)  # [grid_size**2, C, H, W]
+    
+    # Apply softmax to convert logits to probabilities if needed
+    if decoded_images.shape[1] > 1:  # Assume decoder outputs logits if channels > 1
+        decoded_images = torch.softmax(decoded_images, dim=1)
+
+    # Combine the images into a grid
+    img_grid = make_grid(decoded_images, nrow=grid_size, normalize=True, value_range=(0, 1))
+
     #######################
     # END OF YOUR CODE    #
     #######################

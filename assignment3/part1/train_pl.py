@@ -70,10 +70,33 @@ class VAE(pl.LightningModule):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
+
         L_rec = None
         L_reg = None
         bpd = None
-        raise NotImplementedError
+
+        # Encode the images to obtain mean and log_std
+        mean, log_std = self.encoder(imgs)  # Shape: [B, z_dim]
+
+        # Reparameterize to sample latent space
+        z = sample_reparameterize(mean, torch.exp(log_std))  # [B, z_dim]
+
+        # Decode the latent variable to reconstruct images
+        logits = self.decoder(z)  # Shape: [B, C, H, W]
+
+        # Reconstruction loss: Cross entropy between input images and logits
+        L_rec = F.cross_entropy(
+            logits, imgs.long(), reduction='none'
+        ).sum(dim=(1, 2, 3)).mean()  # Sum over spatial dimensions, mean over batch
+
+        # Regularization loss: KL divergence to unit Gaussian
+        L_reg = KLD(mean, log_std).mean()  # Mean over batch
+
+        # Convert ELBO to bits per dimension (bpd)
+        elbo = L_rec + L_reg  # Negative Evidence Lower Bound
+        img_shape = imgs.shape  # [B, C, H, W]
+        bpd = elbo_to_bpd(elbo, img_shape)
+    
         #######################
         # END OF YOUR CODE    #
         #######################
@@ -91,8 +114,18 @@ class VAE(pl.LightningModule):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
+
         x_samples = None
-        raise NotImplementedError
+        
+        # Sample latent variables z from the prior (standard normal distribution)
+        z = torch.randn(batch_size, self.hparams.z_dim, device=self.device)  # [B, z_dim]
+    
+        # Decode the latent variables into images
+        decoded_logits = self.decoder(z)  # [B, C, H, W]
+
+        # Convert logits to 4-bit image space using argmax or sampling
+        x_samples = torch.argmax(decoded_logits, dim=1)  # Select the most probable value
+    
         #######################
         # END OF YOUR CODE    #
         #######################
