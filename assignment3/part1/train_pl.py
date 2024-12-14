@@ -84,10 +84,13 @@ class VAE(pl.LightningModule):
         # Decode the latent variable to reconstruct images
         logits = self.decoder(z)  # Shape: [B, C, H, W]
 
+        # Remove the channel dimension from the input images
+        imgs = imgs.squeeze(1)  # Shape: [B, H, W]
+
         # Reconstruction loss: Cross entropy between input images and logits
         L_rec = F.cross_entropy(
             logits, imgs.long(), reduction='none'
-        ).sum(dim=(1, 2, 3)).mean()  # Sum over spatial dimensions, mean over batch
+        ).sum(dim=(1, 2)).mean()  # Sum over spatial dimensions, mean over batch
 
         # Regularization loss: KL divergence to unit Gaussian
         L_reg = KLD(mean, log_std).mean()  # Mean over batch
@@ -119,12 +122,16 @@ class VAE(pl.LightningModule):
         
         # Sample latent variables z from the prior (standard normal distribution)
         z = torch.randn(batch_size, self.hparams.z_dim, device=self.device)  # [B, z_dim]
-    
-        # Decode the latent variables into images
-        decoded_logits = self.decoder(z)  # [B, C, H, W]
 
-        # Convert logits to 4-bit image space using argmax or sampling
-        x_samples = torch.argmax(decoded_logits, dim=1)  # Select the most probable value
+        # Decode the latent variables into images
+        decoded_logits = self.decoder(z)  # [B, num_classes, H, W]
+
+        # Convert logits to probabilities using softmax
+        probabilities = torch.softmax(decoded_logits, dim=1)
+
+        # Sample from the categorical distribution for each pixel
+        x_samples = torch.multinomial(probabilities.permute(0, 2, 3, 1).reshape(-1, probabilities.size(1)), 1)
+        x_samples = x_samples.view(batch_size, 1, *decoded_logits.shape[2:])  # Reshape back to [B, H, W]
     
         #######################
         # END OF YOUR CODE    #
