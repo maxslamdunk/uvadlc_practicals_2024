@@ -75,29 +75,23 @@ class VAE(pl.LightningModule):
         L_reg = None
         bpd = None
 
-        # Encode the images to obtain mean and log_std
-        mean, log_std = self.encoder(imgs)  # Shape: [B, z_dim]
 
-        # Reparameterize to sample latent space
-        z = sample_reparameterize(mean, torch.exp(log_std))  # [B, z_dim]
+        mean, log_std = self.encoder(imgs) 
+        z = sample_reparameterize(mean, torch.exp(log_std))
+        logits = self.decoder(z)
 
-        # Decode the latent variable to reconstruct images
-        logits = self.decoder(z)  # Shape: [B, C, H, W]
 
-        # Remove the channel dimension from the input images
-        imgs = imgs.squeeze(1)  # Shape: [B, H, W]
+        imgs = imgs.squeeze(1)
 
-        # Reconstruction loss: Cross entropy between input images and logits
+
         L_rec = F.cross_entropy(
             logits, imgs.long(), reduction='none'
-        ).sum(dim=(1, 2)).mean()  # Sum over spatial dimensions, mean over batch
+        ).sum(dim=(1, 2)).mean()
 
-        # Regularization loss: KL divergence to unit Gaussian
-        L_reg = KLD(mean, log_std).mean()  # Mean over batch
 
-        # Convert ELBO to bits per dimension (bpd)
-        elbo = L_rec + L_reg  # Negative Evidence Lower Bound
-        img_shape = imgs.shape  # [B, C, H, W]
+        L_reg = KLD(mean, log_std).mean()
+        elbo = L_rec + L_reg 
+        img_shape = imgs.shape 
         bpd = elbo_to_bpd(elbo, img_shape)
     
         #######################
@@ -119,19 +113,11 @@ class VAE(pl.LightningModule):
         #######################
 
         x_samples = None
-        
-        # Sample latent variables z from the prior (standard normal distribution)
-        z = torch.randn(batch_size, self.hparams.z_dim, device=self.device)  # [B, z_dim]
-
-        # Decode the latent variables into images
-        decoded_logits = self.decoder(z)  # [B, num_classes, H, W]
-
-        # Convert logits to probabilities using softmax
+        z = torch.randn(batch_size, self.hparams.z_dim, device=self.device)
+        decoded_logits = self.decoder(z)
         probabilities = torch.softmax(decoded_logits, dim=1)
-
-        # Sample from the categorical distribution for each pixel
         x_samples = torch.multinomial(probabilities.permute(0, 2, 3, 1).reshape(-1, probabilities.size(1)), 1)
-        x_samples = x_samples.view(batch_size, 1, *decoded_logits.shape[2:])  # Reshape back to [B, H, W]
+        x_samples = x_samples.view(batch_size, 1, *decoded_logits.shape[2:])
     
         #######################
         # END OF YOUR CODE    #

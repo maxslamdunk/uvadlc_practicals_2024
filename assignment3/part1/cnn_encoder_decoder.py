@@ -41,17 +41,17 @@ class CNNEncoder(nn.Module):
 
         c_hid = num_filters
         self.net = nn.Sequential(
-            nn.Conv2d(num_input_channels, c_hid, kernel_size=3, padding=1, stride=2),  # 28x28 -> 14x14
+            nn.Conv2d(num_input_channels, c_hid, kernel_size=3, padding=1, stride=2), 
             nn.GELU(),
             nn.Conv2d(c_hid, c_hid, kernel_size=3, padding=1),
             nn.GELU(),
-            nn.Conv2d(c_hid, 2 * c_hid, kernel_size=3, padding=1, stride=2),  # 14x14 -> 7x7
+            nn.Conv2d(c_hid, 2 * c_hid, kernel_size=3, padding=1, stride=2),
             nn.GELU(),
             nn.Conv2d(2 * c_hid, 2 * c_hid, kernel_size=3, padding=1),
             nn.GELU(),
-            nn.Conv2d(2 * c_hid, 2 * c_hid, kernel_size=3, padding=1, stride=2),  # 7x7 -> 4x4
+            nn.Conv2d(2 * c_hid, 2 * c_hid, kernel_size=3, padding=1, stride=2), 
             nn.GELU(),
-            nn.Flatten(),  # Flatten 2D grid into feature vector
+            nn.Flatten(),
         )
         self.mean_layer = nn.Linear(2 * c_hid * 4 * 4, z_dim)
         self.log_std_layer = nn.Linear(2 * c_hid * 4 * 4, z_dim)
@@ -76,9 +76,9 @@ class CNNEncoder(nn.Module):
 
         mean = None
         log_std = None
-        features = self.net(x)  # Extract features using the convolutional network
-        mean = self.mean_layer(features)  # Predict mean
-        log_std = self.log_std_layer(features)  # Predict log standard deviation
+        features = self.net(x)  
+        mean = self.mean_layer(features)  
+        log_std = self.log_std_layer(features)  
     
         #######################
         # END OF YOUR CODE    #
@@ -108,22 +108,22 @@ class CNNDecoder(nn.Module):
 
         c_hid = num_filters
 
-        # Linear layer to map latent space to feature map
+        
         self.linear = nn.Sequential(
-            nn.Linear(z_dim, 2 * 4 * 4 * c_hid),  # Map latent vector to feature space
+            nn.Linear(z_dim, 2 * 4 * 4 * c_hid), 
             nn.GELU()
         )
 
         self.net = nn.Sequential(
-            nn.ConvTranspose2d(2 * c_hid, 2 * c_hid, kernel_size=3, stride=2, padding=1, output_padding=0),  # 4x4 -> 7x7
+            nn.ConvTranspose2d(2 * c_hid, 2 * c_hid, kernel_size=3, stride=2, padding=1, output_padding=0), 
             nn.GELU(),
             nn.Conv2d(2 * c_hid, 2 * c_hid, kernel_size=3, padding=1),
             nn.GELU(),
-            nn.ConvTranspose2d(2 * c_hid, c_hid, kernel_size=3, stride=2, padding=1, output_padding=1),  # 7x7 -> 14x14
+            nn.ConvTranspose2d(2 * c_hid, c_hid, kernel_size=3, stride=2, padding=1, output_padding=1),  
             nn.GELU(),
             nn.Conv2d(c_hid, c_hid, kernel_size=3, padding=1),
             nn.GELU(),
-            nn.ConvTranspose2d(c_hid, num_input_channels, kernel_size=3, stride=2, padding=1, output_padding=1),  # 14x14 -> 28x28
+            nn.ConvTranspose2d(c_hid, num_input_channels, kernel_size=3, stride=2, padding=1, output_padding=1),
         )
     
         #######################
@@ -145,10 +145,10 @@ class CNNDecoder(nn.Module):
         #######################
 
         x = None
-        x = self.linear(z)  # Shape: [B, 2 * c_hid * 4 * 4]
-        x = x.view(x.shape[0], -1, 4, 4)  # Reshape to [B, 2 * c_hid, 4, 4]
+        x = self.linear(z)  
+        x = x.view(x.shape[0], -1, 4, 4) 
 
-        # Pass through convolutional layers
+
         x = self.net(x)
 
         #######################

@@ -30,14 +30,14 @@ def fgsm_attack(image, data_grad, epsilon = 0.25):
     # Get the sign of the data gradient (element-wise)
     # Create the perturbed image, scaled by epsilon
     # Make sure values stay within valid range
-
+    device = image.device
     sign = torch.sign(data_grad)
     perturbed_image = image + epsilon * sign
     # print("DDDDAAAAAAAAAAAAAAAA")
     # print(perturbed_image.shape)
     # print("DDDDAAAAAAAAAAAAAAAA")
-    min = ((torch.tensor([0, 0, 0]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1)
-    max = ((torch.tensor([1, 1, 1]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1)
+    min = ((torch.tensor([0, 0, 0]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
+    max = ((torch.tensor([1, 1, 1]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
     # print("DDDDAAAAAAAAAAAAAAAA")
     # print(min.shape)
     # print("DDDDAAAAAAAAAAAAAAAA")
@@ -51,6 +51,7 @@ def fgsm_loss(model, criterion, inputs, labels, defense_args, return_preds = Tru
     alpha = defense_args[ALPHA]
     epsilon = defense_args[EPSILON]
     inputs.requires_grad = True
+    device = inputs.device
 
     original_outputs = model(inputs)
 
@@ -62,16 +63,16 @@ def fgsm_loss(model, criterion, inputs, labels, defense_args, return_preds = Tru
     # Combine the two losses
     # Hint: the inputs are used in two different forward passes,
     # so you need to make sure those don't clash
-    loss1.backward()
+    loss1.backward(retain_graph=True)
     data_grad = inputs.grad.detach()
 
     sign = torch.sign(data_grad)
     perturbed_image = inputs + epsilon * sign
-    min = ((torch.tensor([0, 0, 0]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1)
-    max = ((torch.tensor([1, 1, 1]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1)
+    min = ((torch.tensor([0, 0, 0]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
+    max = ((torch.tensor([1, 1, 1]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
     perturbed_image = torch.max(min, torch.min(max, perturbed_image))
 
-    loss = alpha * loss1 + (1 - alpha) * criterion(model(inputs + perturbed_image), labels)
+    loss = alpha * loss1 + (1 - alpha) * criterion(model(perturbed_image), labels)
 
     if return_preds:
         _, preds = torch.max(original_outputs, 1)
@@ -84,7 +85,7 @@ def pgd_attack(model, data, target, criterion, args):
     alpha = args[ALPHA]
     epsilon = args[EPSILON]
     num_iter = args[NUM_ITER]
-
+    device = data.device
     # Implement the PGD attack
     # Start with a copy of the data
     # Then iteratively perturb the data in the direction of the gradient
@@ -92,7 +93,23 @@ def pgd_attack(model, data, target, criterion, args):
     # Hint: to make sure to each time get a new detached copy of the data,
     # to avoid accumulating gradients from previous iterations
     # Hint: it can be useful to use toch.nograd()
-    raise NotImplementedError()     
+    orig = data.detach()
+    min = ((torch.tensor([0, 0, 0]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
+    max = ((torch.tensor([1, 1, 1]) - torch.tensor([0.4914, 0.4822, 0.4465])) / torch.tensor([0.247, 0.243, 0.261])).view(1, 3, 1, 1).to(device)
+
+    for _ in range(num_iter):
+        data.requires_grad = True
+        output = model(data)
+        loss = criterion(output, target)
+        model.zero_grad()
+        loss.backward()
+        data_grad = data.grad.detach()
+        with torch.no_grad():
+            perturbed_data = data + alpha * torch.sign(data_grad)
+            perturbed_data = torch.max(orig - epsilon, torch.min(orig + epsilon, perturbed_data))
+            perturbed_data = torch.max(min, torch.min(max, perturbed_data))
+            data = perturbed_data.detach()
+     
     return perturbed_data
 
 
@@ -127,7 +144,8 @@ def test_attack(model, test_loader, attack_function, attack_args):
         elif attack_function == PGD:
             # Get the perturbed data using the PGD attack
             # Re-classify the perturbed image
-            raise NotImplementedError()
+            perturbed_data = pgd_attack(model, data, target, criterion, attack_args)
+            output = model(perturbed_data)
         else:
             print(f"Unknown attack {attack_function}")
 

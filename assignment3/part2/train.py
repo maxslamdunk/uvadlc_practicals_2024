@@ -38,7 +38,7 @@ def main(args):
         print("Testing adversarial attacks")
         if not args.test_crossover_defense:
             if training_strategy == STANDARD: 
-                for attack in [FGSM]:	
+                for attack in [FGSM, PGD]:	
                         adv_acc, adv_examples = test_attack(model, testloader, attack, strategy_args[attack])
                         visualise(args, adv_examples, training_strategy, attack, save_dir=args.save_dir)
             else:
